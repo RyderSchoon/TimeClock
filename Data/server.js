@@ -14,10 +14,10 @@ var serverPort  = 4000;
 	
 var connection = mysql.createConnection(
     {
-        host: 'us-cdbr-azure-central-a.cloudapp.net',
-        user: 'b644355019a7e3',
-        password: 'a49f6eaf',
-        database: 'acsm_adee775353eea60',
+        host: 'us-cdbr-azure-east-c.cloudapp.net',
+        user: 'b2291f79d4737a',
+        password: '8569c35a',
+        database: 'timeclock2',
     }
 );
 
@@ -38,55 +38,19 @@ io.sockets.on('connection', function (socket) {
 		socket.emit('getClockedInResponse', getClockedIn());
 	});
 		
-    socket.on('SpecificAbilityRequest', function (abilityObject) {
-        if (abilityObject == null || abilityObject.ItemID == undefined) {
-            return;
-        }
-        querySpecificAbility(abilityObject,function(ability){socket.emit('SpecificAbilityResult', ability);});
-    });
-    socket.on('SpecificEquipmentRequest', function (equipmentObject) {
-        if (equipmentObject == null || equipmentObject.ItemID == undefined) {
-            return;
-        }
-        querySpecificEquipment(equipmentObject,function(equipment){socket.emit('SpecificEquipmentResult', equipment);});
-    });
-    socket.on('SpecificMonsterRequest', function (monsterObject) {
-        if (monsterObject == null || monsterObject.ItemID == undefined) {
-            return;
-        }
-        querySpecificMonster(monsterObject,function(monster){socket.emit('SpecificMonsterResult', monster);})
-    });
-    socket.on('SpecificNPCRequest', function (NPCObject) {
-        if (NPCObject == null || NPCObject.ItemID == undefined) {
-            return;
-        }
-        querySpecificNPC(NPCObject,function(NPC){socket.emit('SpecificNPCResult', NPC);})
-    });
-    socket.on('SpecificTalentRequest', function (talentObject) {
-        if (talentObject == null || talentObject.ItemID == undefined) {
-            return;
-        }
-        querySpecificTalent(talentObject,function(talent){socket.emit('SpecificTalentResult', talent);})
-    });
-    socket.on('PostAbility', function (abilityObject) {
-        postAbility(abilityObject);
-    })
-    socket.on('PostEquipment', function (equipmentObject) {
-        postAbility(equipmentObject);
-    })
-    socket.on('PostMonster', function (monsterObject) {
-        postAbility(monsterObject);
-    })
-    socket.on('PostNPC', function (NPCObject) {
-        postAbility(NPCObject);
-    })
-    socket.on('PostTalent', function (talentObject) {
-        postAbility(talentObject);
-    })
-    socket.on('ShallowQueryRequest', function (tables, tags) {
-        shallowQuery(tables, tags, function (results) {
-            socket.emit('ShallowQueryResult', results);
-        });
+    socket.on('login', function (email, password) {
+        if(isCustomer){
+			socket.emit('loginResponse','Customer');
+		}
+		else if(isManager){
+			socket.emit('loginResponse','Manager');
+		}
+		else if(isEmployee){
+			socket.emit('loginResponse','Employee');
+		}
+		else{
+			socket.emit('loginResponse','Invalid username/password');
+		}
     });
 });
 
@@ -96,144 +60,73 @@ io.listen(5000);
 console.log("Web sockets readied");
 
 //Database Classes
-var Ability = function (ITEM_ID, ABILITY_NAME, IMAGE_PATH, SKILL, COST, DESCRIPTION, FLAVOR, IS_HOMEBREW, CREATED_BY, CREATED_DATE, MODIFIED_BY, MODIFIED_DATE, PREREQUISITES, TAGS) {
-    this.ItemID = ITEM_ID;
-    this.AbilityName = ABILITY_NAME;
-    this.ImagePath = IMAGE_PATH;
-    this.Skill = SKILL;
-    this.Cost = COST;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
-    this.CreatedBy = CREATED_BY;
-    this.CreatedDate = CREATED_DATE;
-    this.ModifiedBy = MODIFIED_BY;
-    this.ModifiedDate = MODIFIED_DATE;
-    this.Prerequisites = PREREQUISITES;
-    this.Tags = TAGS;
+var Employee = function (FirstName, LastName, UserID, Wage, DepartmentID, Email, TimeEntries){
+	this.FirstName = FirstName;
+	this.LastName = LastName;
+	this.UserID = UserID;
+	this.Wage = Wage;
+	this.DepartmentID = DepartmentID;
+	this.Email = Email;
+	this.TimeEntries = TimeEntries;
 }
-var Attack = function (MOB_ID, MOB_TYPE, ATTACK_NAME, ATTACK_BONUS, ATTACK_RANGE, DAMAGE, DESCRIPTION, FLAVOR, IS_HOMEBREW) {
-    this.MobID = MOB_ID;
-    this.MobType = MOB_TYPE;
-    this.AttackName = ATTACK_NAME;
-    this.AttackBonus = ATTACK_BONUS;
-    this.AttackRange = ATTACK_RANGE;
-    this.Damage = DAMAGE;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
+var Customer = function (Name, CustomerID, Email, Wage, DepartmentID, Email, Projects){
+	this.Name = Name;
+	this.CustomerID = CustomerID;
+	this.Email = Email;
+	this.Projects = Projects;
 }
-var Equipment = function (ITEM_ID, EQUIPMENT_NAME, IMAGE_PATH, COST, DESCRIPTION, FLAVOR, IS_HOMEBREW, CREATED_BY, CREATED_DATE, MODIFIED_BY, MODIFIED_DATE, TAGS) {
-    this.ItemID = ITEM_ID;
-    this.EquipmentName = EQUIPMENT_NAME;
-    this.ImagePath = IMAGE_PATH;
-    this.Cost = COST;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
-    this.CreatedBy = CREATED_BY;
-    this.CreatedDate = CREATED_DATE;
-    this.ModifiedBy = MODIFIED_BY;
-    this.ModifiedDate = MODIFIED_DATE;
-    this.Tags = TAGS;
+var Project = function (Name, ProjectID, DepartmentID, CustomerID, ExpectedHours, BillDue, BillTotal){
+	this.Name = Name;
+	this.ProjectID = ProjectID;
+	this.DepartmentID = DepartmentID;
+	this.CustomerID = CustomerID;
+	this.ExpectedHours = ExpectedHours;
+	this.BillDue = BillDue;
+	this.BillTotal = BillTotal;
 }
-var Monster = function (ITEM_ID, MONSTER_NAME, IMAGE_PATH, INITIATIVE, MOVEMENT, HP, AC, REFLEX, FORTITUDE, WILL, ABILITY_POINTS, ABILITY_REGEN, DESCRIPTION, FLAVOR, IS_HOMEBREW, CREATED_BY, CREATED_DATE, MODIFIED_BY, MODIFIED_DATE, ATTACKS, SKILLS, ABILITIES, TALENTS, EQUIPMENT, TAGS) {
-    this.ItemID = ITEM_ID;
-    this.MonsterName = MONSTER_NAME;
-    this.ImagePath = IMAGE_PATH;
-    this.Initiative = INITIATIVE;
-    this.Movement = MOVEMENT;
-    this.HP = HP;
-    this.AC = AC;
-    this.Reflex = REFLEX;
-    this.Fortitude = FORTITUDE;
-    this.Will = WILL;
-    this.AbilityPoints = ABILITY_POINTS;
-    this.AbilityRegen = ABILITY_REGEN;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
-    this.CreatedBy = CREATED_BY;
-    this.CreatedDate = CREATED_DATE;
-    this.ModifiedBy = MODIFIED_BY;
-    this.ModifiedDate = MODIFIED_DATE;
-    this.Attacks = ATTACKS;
-    this.Skills = SKILLS;
-    this.Abilities = ABILITIES;
-    this.Talents = TALENTS;
-    this.Equipment = EQUIPMENT;
-    this.Tags = TAGS;
+var Department = function (Name, DepartmentID, ManagerID, Projects, Employees){
+	this.Name = Name;
+	this.DepartmentID = DepartmentID;
+	this.ManagerID = ManagerID;
+	this.Projects = Projects;
+	this.Employees = Employees;
 }
-var NPC = function (ITEM_ID, NPC_NAME, IMAGE_PATH, NPC_LEVEL, INITIATIVE, MOVEMENT, HP, AC, REFLEX, FORTITUDE, WILL, ABILITY_POINTS, ABILITY_REGEN, CHARISMA, CONSTITUTION, DEXTERITY, INTELLIGENCE, LUCK, SPEED, STRENGTH, WISDOM, DESCRIPTION, FLAVOR, IS_HOMEBREW, CREATED_BY, CREATED_DATE, MODIFIED_BY, MODIFIED_DATE, ATTACKS, SKILLS, ABILITIES, TALENTS, EQUIPMENT, TAGS) {
-    this.ItemID = ITEM_ID;
-    this.NPCName = NPC_NAME;
-    this.ImagePath = IMAGE_PATH;
-    this.NPCLevel = NPC_LEVEL;
-    this.Initiative = INITIATIVE;
-    this.Movement = MOVEMENT;
-    this.HP = HP;
-    this.AC = AC;
-    this.Reflex = REFLEX;
-    this.Fortitude = FORTITUDE;
-    this.Will = WILL;
-    this.AbilityPoints = ABILITY_POINTS;
-    this.AbilityRegen = ABILITY_REGEN;
-    this.Charisma = CHARISMA;
-    this.Constitution = CONSTITUTION;
-    this.Dexterity = DEXTERITY;
-    this.Intelligence = INTELLIGENCE;
-    this.Luck = LUCK;
-    this.Speed = SPEED;
-    this.Strength = STRENGTH;
-    this.Wisdom = WISDOM;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
-    this.CreatedBy = CREATED_BY;
-    this.CreatedDate = CREATED_DATE;
-    this.ModifiedBy = MODIFIED_BY;
-    this.ModifiedDate = MODIFIED_DATE;
-    this.Attacks = ATTACKS;
-    this.Skills = SKILLS;
-    this.Abilities = ABILITIES;
-    this.Talents = TALENTS;
-    this.Equipment = EQUIPMENT;
-    this.Tags = TAGS;
+var TimeEntry = function (Name, CustomerID, Email, Wage, DepartmentID, Email, Projects){
+	this.Name = Name;
+	this.CustomerID = CustomerID;
+	this.Email = Email;
+	this.Projects = Projects;
 }
-var Prerequisite = function (ITEM_ID, ITEM_TYPE, DESCRIPTION, IS_HOMEBREW) {
-    this.ItemID = ITEM_ID;
-    this.ItemType = ITEM_TYPE;
-    this.Description = DESCRIPTION;
-    this.IsHomebrew = IS_HOMEBREW;
+//Login class Identifier
+function isCustomer(email,password){
+	var sql = "SELECT * FROM Customers WHERE Email = '"+mysql.escape(email)+"' AND Password = '"+mysql.escape(password)+"';";
+        connection.query(sql, function (err, result) {
+            if (err)
+                console.log("isCustomer select Customers SQL ERROR: " + err + ": " + sql);
+            else {
+                return rows[0] != undefined;
+            }
+        });
 }
-var Skill = function (MOB_ID, MOB_TYPE, SKILL_NAME, SCORE, ATTRIBUTE, DESCRIPTION, FLAVOR, IS_HOMEBREW) {
-    this.MobID = MOB_ID;
-    this.MobType = MOB_TYPE;
-    this.SkillName = SKILL_NAME;
-    this.Score = SCORE;
-    this.Attribute = ATTRIBUTE;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
+function isEmployee(email,password){
+	var sql = "SELECT * FROM Employees WHERE Email = '"+mysql.escape(email)+"' AND Password = '"+mysql.escape(password)+"';";
+        connection.query(sql, function (err, result) {
+            if (err)
+                console.log("isEmployee select Employees SQL ERROR: " + err + ": " + sql);
+            else {
+                return rows[0] != undefined;
+            }
+        })
 }
-var Tag = function (ENTITY_ID, ENTITY_TYPE, TAG) {
-    this.EntityID = ENTITY_ID;
-    this.EntityType = ENTITY_TYPE;
-    this.Tag = TAG;
-}
-var Talent = function (ITEM_ID, TALENT_NAME, IMAGE_PATH, DESCRIPTION, FLAVOR, IS_HOMEBREW, CREATED_BY, CREATED_DATE, MODIFIED_BY, MODIFIED_DATE, PREREQUISITES, TAGS) {
-    this.ItemID = ITEM_ID;
-    this.TalentName = TALENT_NAME;
-    this.ImagePath = IMAGE_PATH;
-    this.Description = DESCRIPTION;
-    this.Flavor = FLAVOR;
-    this.IsHomebrew = IS_HOMEBREW;
-    this.CreatedBy = CREATED_BY;
-    this.CreatedDate = CREATED_DATE;
-    this.ModifiedBy = MODIFIED_BY;
-    this.ModifiedDate = MODIFIED_DATE;
-    this.Prerequisites = PREREQUISITES;
-    this.Tags = TAGS;
+function isManager(email,password){
+	var sql = "SELECT * FROM Employees WHERE Email = '"+mysql.escape(email)+"' AND Password = '"+mysql.escape(password)+" AND (SELECT * FROM Departments WHERE ManagerID = Employees.userID;";
+        connection.query(sql, function (err, result) {
+            if (err)
+                console.log("isManager select Employees, Departments SQL ERROR: " + err + ": " + sql);
+            else {
+                return rows[0] != undefined;
+            }
+        })
 }
 //PostObject Methods
 function clocktime(userId){
@@ -339,134 +232,6 @@ function postAbility(abilityObject) {
         */
     }
 }
-function postEquipment(equipmentObject) {
-    if (equipmentObject == null) {
-        return;
-    }
-    if (equipmentObject.ItemID == undefined || equipmentObject.ItemID == null) {
-        //insert
-        var sql = "INSERT INTO EQUIPMENT (EQUIPMENT_NAME,IMAGE_PATH,COST,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
-        sql += "VALUES(" + mysql.escape(equipmentObject.EquipmentName) + "," + mysql.escape(equipmentObject.ImagePath) + "," + mysql.escape(equipmentObject.Cost) + "," + mysql.escape(equipmentObject.Description) + "," + mysql.escape(equipmentObject.Flavor) + "," + mysql.escape(equipmentObject.IsHomebrew) + "," + mysql.escape(equipmentObject.CreatedBy) + ",SYSDATE());";
-        connection.query(sql, function (err, result) {
-            if (err)
-                console.log("postEquipment insert equipment SQL ERROR: " + err + ":" + sql);
-            else {
-                var itemID = result.insertId;
-                if (equipmentObject.Tags != undefined) {
-                    for (var i in equipmentObject.Tags) {
-                        connection.query("INSERT INTO ENTITY_TAGS (ENTITY_ID,ENTITY_TYPE,TAG) VALUES(" + itemID + ",'EQUIPMENT'," + mysql.escape(equipmentObject.Tags[i]) + ");", function (err, result) {
-                            if (err)
-                                console.log("postEquipment insert TAG SQL ERROR: " + err + ":" + sql);
-                        });
-                    }
-                }
-            }
-        })
-    }
-    else {
-        //update
-        /*
-        */
-    }
-}
-function postMonster(monsterObject) {
-    if (monsterObject == null) {
-        return;
-    }
-    if (monsterObject.ItemID == undefined || monsterObject.ItemID == null) {
-        //insert
-        var sql = "INSERT INTO MONSTERS (MONSTER_NAME,IMAGE_PATH,INITIATIVE,MOVEMENT,HP,AC,REFLEX,FORTITUDE,WILL,ABILITY_POINTS,ABILITY_REGEN,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
-        sql += "VALUES(" + mysql.escape(monsterObject.MonsterName) + "," + mysql.escape(monsterObject.ImagePath) + "," + mysql.escape(monsterObject.Initiative) + "," + mysql.escape(monsterObject.Movement) + "," + mysql.escape(monsterObject.HP) + "," + mysql.escape(monsterObject.AC) + "," + mysql.escape(monsterObject.Reflex) + "," + mysql.escape(monsterObject.Fortitude) + "," + mysql.escape(monsterObject.Will) + "," + mysql.escape(monsterObject.AbilityPoints) + "," + mysql.escape(monsterObject.AbilityRegen) + "," + mysql.escape(abilityObject.Description) + "," + mysql.escape(monsterObject.Flavor) + "," + mysql.escape(monsterObject.IsHomebrew) + "," + mysql.escape(monsterObject.CreatedBy) + ",SYSDATE());";
-        connection.query(sql, function (err, result) {
-            if (err)
-                console.log("postMonster insert monster SQL ERROR: " + err + ":" + sql);
-            else {
-                if (monsterObject.Tags != undefined) {
-                    for (var i in monsterObject.Tags) {
-                        connection.query("INSERT INTO ENTITY_TAGS (ENTITY_ID,ENTITY_TYPE,TAG) VALUES(" + itemID + ",'MONSTERS'," + mysql.escape(monsterObject.Tags[i]) + ");", function (err, result) {
-                            if (err)
-                                console.log("postMonster insert TAG SQL ERROR: " + err + ":" + sql);
-                        });
-                    }
-                }
-            }
-        })
-    }
-    else {
-        //update
-        /*
-        */
-    }
-}
-function postNPC(NPCObject) {
-    if (NPCObject == null) {
-        return;
-    }
-    if (NPCObject.ItemID == undefined || NPCObject.ItemID == null) {
-        //insert
-        var sql = "INSERT INTO NPCS (NPC_NAME,IMAGE_PATH,NPC_LEVEL,INITIATIVE,MOVEMENT,HP,AC,REFLEX,FORTITUDE,WILL,ABILITY_POINTS,ABILITY_REGEN,CHARISMA,CONSTITUTION,DEXTERITY,INTELLIGENCE,LUCK,SPEED,STRENGTH,WISDOM,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
-        sql += "VALUES(" + mysql.escape(NPCObject.NPCName) + "," + mysql.escape(NPCObject.ImagePath) + "," + mysql.escape(NPCObject.Initiative) + "," + mysql.escape(NPCObject.Movement) + "," + mysql.escape(NPCObject.HP) + "," + mysql.escape(NPCObject.AC) + "," + mysql.escape(NPCObject.Reflex) + "," + mysql.escape(NPCObject.Fortitude) + "," + mysql.escape(NPCObject.Will) + "," + mysql.escape(NPCObject.AbilityPoints) + "," + mysql.escape(NPCObject.AbilityRegen) + "," + mysql.escape(NPCObject.Charisma) + "," + mysql.escape(NPCObject.Constitution) + "," + mysql.escape(NPCObject.Dexterity) + "," + mysql.escape(NPCObject.Intelligence) + "," + mysql.escape(NPCObject.Luck) + "," + mysql.escape(NPCObject.Speed) + "," + mysql.escape(NPCObject.Strength) + "," + mysql.escape(NPCObject.Wisdom) + "," + mysql.escape(NPCObject.Description) + "," + mysql.escape(NPCObject.Flavor) + "," + mysql.escape(NPCObject.IsHomebrew) + "," + mysql.escape(NPCObject.CreatedBy) + ",SYSDATE());";
-        connection.query(sql, function (err, result) {
-            if (err)
-                console.log("postNPC insert NPC SQL ERROR: " + err + ":" + sql);
-            else {
-                var itemID = result.insertId;
-                if (abilityObject.Tags != undefined) {
-                    for (var i in abilityObject.Tags) {
-                        connection.query("INSERT INTO ENTITY_TAGS (ENTITY_ID,ENTITY_TYPE,TAG) VALUES(" + itemID + ",'NPCS'," + mysql.escape(NPCObject.Tags[i]) + ");", function (err, result) {
-                            if (err)
-                                console.log("postNPC insert TAG SQL ERROR: " + err + ":" + sql);
-                        });
-                    }
-                }
-            }
-        })
-    }
-    else {
-        //update
-        /*
-        */
-    }
-}
-function postTalent(talentObject) {
-    if (talentObject == null) {
-        return;
-    }
-    if (talentObject.ItemID == undefined || talentObject.ItemID == null) {
-        //insert
-        var sql = "INSERT INTO TALENTS (TALENT_NAME,IMAGE_PATH,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
-        sql += "VALUES(" + mysql.escape(talentObject.AbilityName) + "," + mysql.escape(talentObject.ImagePath) + "," + mysql.escape(talentObject.Description) + "," + mysql.escape(talentObject.Flavor) + "," + mysql.escape(talentObject.IsHomebrew) + "," + mysql.escape(talentObject.CreatedBy) + ",SYSDATE());";
-        connection.query(sql, function (err, result) {
-            if (err)
-                console.log("postTalent insert ability SQL ERROR: " + err + ":" + sql);
-            else {
-                var itemID = result.insertId;
-                if (talentObject.Prerequisites != undefined) {
-                    for (var i in talentObject.Prerequisites) {
-                        var prereq = talentObject.Prerequites;
-                        connection.query("INSERT INTO PREREQUISITES (ITEM_ID,ITEM_TYPE,DESCRIPTION,IS_HOMEBREW) VALUES(" + itemID + ",'ABILITIES'," + mysql.escape(talentObject.Prerequisites[i]) + ",true);", function (err, result) {
-                            if (err)
-                                console.log("postTalent insert prereq SQL ERROR: " + err);
-                        });
-                    }
-                }
-                if (talentObject.Tags != undefined) {
-                    for (var i in talentObject.Tags) {
-                        connection.query("INSERT INTO ENTITY_TAGS (ENTITY_ID,ENTITY_TYPE,TAG) VALUES(" + itemID + ",'ABILITIES'," + mysql.escape(talentObject.Tags[i]) + ");", function (err, result) {
-                            if (err)
-                                console.log("postTalent insert TAG SQL ERROR: " + err + ":" + sql);
-                        });
-                    }
-                }
-            }
-        })
-    }
-    else {
-        //update
-        /*
-        */
-    }
-}
 //QuerySpecific Methods
 function querySpecificAbility(abilityObject,callback) {
     connection.query("SELECT * FROM ABILITIES WHERE ITEM_ID = "+abilityObject.ItemID+";", function(err,rows){
@@ -480,235 +245,6 @@ function querySpecificAbility(abilityObject,callback) {
             toAbility(rows[0], true, rowComplete);
         }
     });
-}
-function querySpecificEquipment(equipmentObject,callback) {
-    connection.query("SELECT * FROM EQUIPMENT WHERE ITEM_ID = "+equipmentObject.ItemID+";", function(err,rows){
-        if(err){
-            console.log("querySpecificEquipment SQL ERROR: " + err);
-        }
-        else{
-            var rowComplete = function (equipment) {
-                callback(equipment);
-            }
-            toEquipment(rows[0], true, rowComplete);
-        }
-    });
-}
-function querySpecificMonster(monsterObject,callback) {
-    connection.query("SELECT * FROM MONSTERS WHERE ITEM_ID = "+monsterObject.ItemID+";", function(err,rows){
-        if(err){
-            console.log("querySpecificMonster SQL ERROR: " + err);
-        }
-        else{
-            var rowComplete = function (monster) {
-                callback(monster);
-            }
-            toMonster(rows[0], true, rowComplete);
-        }
-    });
-}
-function querySpecificNPC(NPCObject,callback) {
-    connection.query("SELECT * FROM NPCS WHERE ITEM_ID = "+NPCObject.ItemID+";", function(err,rows){
-        if(err){
-            console.log("querySpecificNPC SQL ERROR: " + err);
-        }
-        else{
-            var rowComplete = function (NPC) {
-                callback(NPC);
-            }
-            toNPC(rows[0], true, rowComplete);
-        }
-    });
-}
-function querySpecificTalent(talentObject,callback) {
-    connection.query("SELECT * FROM ABILITIES WHERE ITEM_ID = "+talentObject.ItemID+";", function(err,rows){
-        if(err){
-            console.log("querySpecificTalent SQL ERROR: " + err);
-        }
-        else{
-            var rowComplete = function (talent) {
-                callback(talent);
-            }
-            toTalent(rows[0], true, rowComplete);
-        }
-    });
-}
-//ShallowQuery Methods
-function shallowQuery(tables, tags, callback) {
-    if (tables == null || tables.length == 0) {
-        return;
-    }
-    var queriesActive = 0;
-    var abilities = [];
-    var equipment = [];
-    var monsters = [];
-    var npcs = [];
-    var talents = [];
-    for (var i in tables) {
-        var table = tables[i];
-        if (table == "ABILITIES" || table == "EQUIPMENT" || table == "MONSTERS" || table == "NPCS" || table == "TALENTS") {
-            queriesActive++;
-            var itemName = "";
-            var queryFunction;
-            var finishQuery = function () {
-                queriesActive--;
-                if (queriesActive == 0) {
-                    callback([abilities, equipment, monsters, npcs, talents]);
-                }
-            }
-            var queryAblities = function () {
-                connection.query(sql, function (err, rows) {
-                    if (err) {
-                        console.log("shallowQuery ABILITY SQL ERROR: " + err)
-                    }
-                    else {
-                        if (rows.length == 0) {
-                            finishQuery();
-                        }
-                        var rowsProcessed = 0;
-                        var processRow = function (input) {
-                            abilities.push(input);
-                            rowsProcessed++;
-                            if (rowsProcessed == rows.length/17) {
-                                finishQuery();
-                            }
-                        }
-                        for (var i of rows) {
-                            toAbility(i, false, processRow);
-                        }
-                    }
-                });
-            }
-            var queryEquipment = function () {
-                connection.query(sql, function (err, rows) {
-                    if (err) {
-                        console.log("shallowQuery ABILITY SQL ERROR: " + err)
-                    }
-                    else {
-                        if (rows.length == 0) {
-                            finishQuery();
-                        }
-                        var rowsProcessed = 0;
-                        var processRow = function (input) {
-                            equipment.push(input);
-                            rowsProcessed++;
-                            if (rowsProcessed == rows.length / 17) {
-                                finishQuery();
-                            }
-                        }
-                        for (var i of rows) {
-                            toEquipment(i, false, processRow);
-                        }
-                    }
-                });
-            }
-            var queryMonsters = function () {
-                connection.query(sql, function (err, rows) {
-                    if (err) {
-                        console.log("shallowQuery ABILITY SQL ERROR: " + err)
-                    }
-                    else {
-                        if (rows.length == 0) {
-                            finishQuery();
-                        }
-                        var rowsProcessed = 0;
-                        var processRow = function (input) {
-                            monsters.push(input);
-                            rowsProcessed++;
-                            if (rowsProcessed == rows.length / 17) {
-                                finishQuery();
-                            }
-                        }
-                        for (var i of rows) {
-                            toMonster(i, false, processRow);
-                        }
-                    }
-                });
-            }
-            var queryNPCs = function () {
-                connection.query(sql, function (err, rows) {
-                    if (err) {
-                        console.log("shallowQuery ABILITY SQL ERROR: " + err)
-                    }
-                    else {
-                        if (rows.length == 0) {
-                            finishQuery();
-                        }
-                        var rowsProcessed = 0;
-                        var processRow = function (input) {
-                            npcs.push(input);
-                            rowsProcessed++;
-                            if (rowsProcessed == rows.length / 17) {
-                                finishQuery();
-                            }
-                        }
-                        for (var i of rows) {
-                            toNPC(i, false, processRow);
-                        }
-                    }
-                });
-            }
-            var queryTalents = function () {
-                connection.query(sql, function (err, rows) {
-                    if (err) {
-                        console.log("shallowQuery ABILITY SQL ERROR: " + err)
-                    }
-                    else {
-                        if (rows.length == 0) {
-                            finishQuery();
-                        }
-                        var rowsProcessed = 0;
-                        var processRow = function (input) {
-                            talents.push(input);
-                            rowsProcessed++;
-                            if (rowsProcessed == rows.length / 17) {
-                                finishQuery();
-                            }
-                        }
-                        for (var i of rows) {
-                            toTalent(i, false, processRow);
-                        }
-                    }
-                });
-            }
-            if (table == "ABILITIES") {
-                itemName = "ABILITY_NAME";
-                queryFunction = queryAblities;
-            }
-            else if (table == "EQUIPMENT") {
-                itemName = "EQUIPMENT_NAME";
-                queryFunction = queryEquipment;
-            }
-            else if (table == "MONSTERS") {
-                itemName = "MONSTER_NAME";
-                queryFunction = queryMonsters;
-            }
-            else if (table == "NPCS") {
-                itemName = "NPC_NAME";
-                queryFunction = queryNPCs;
-            }
-            else {
-                itemName = "TALENT_NAME";
-                queryFunction = queryTalents;
-            }
-            var sql = "SELECT O.* FROM " + table + " O";
-            if (tags != null && tags.length > 0) {
-                sql += ", ENTITY_TAGS T  WHERE ";
-                for (var i = 0; i < tags.length; i++) {
-                    var tag = mysql.escape(tags[i]);
-                    if (i == 0) {
-                        sql += "((O." + itemName + " LIKE '%" + tag.substr(1, tag.length - 2) + "%') OR (T.TAG = " + tag + " AND T.ENTITY_ID = O.ITEM_ID AND T.ENTITY_TYPE = '" + table + "'))"
-                    }
-                    else {
-                        sql += "OR ((O." + itemName + " LIKE '%" + tag.substr(1, tag.length - 2) + "%') OR (T.TAG = " + tag + " AND T.ENTITY_ID = O.ITEM_ID AND T.ENTITY_TYPE = '" + table + "'))"
-                    }
-                }
-                sql += ";";
-            }
-            console.log(sql);
-            queryFunction();
-        }
-    }
 }
 //Cast Methods
 function toAbility(RowPacket, isShallow, callback) {
