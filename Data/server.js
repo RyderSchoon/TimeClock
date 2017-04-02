@@ -8,6 +8,7 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var fs = require('fs');
 var mysql = require('mysql');
+var dateTime = require('node-datetime');
 var ioPort  = 5000;
 var serverPort  = 4000;
 	
@@ -28,9 +29,13 @@ app.use(express.static(base_dir));
 	
 //When somebody connects, add these handlers
 io.sockets.on('connection', function (socket) {
-	socket.on('clock time', function(id){
+	socket.on('clockTime', function(id){
 		console.log(id);
-		socket.emit('clocktimeresponse', "hello!");
+		clocktime(id);
+		socket.emit('clockTimeResponse', id);
+	});
+	socket.on('getClockedIn', function(){
+		socket.emit('getClockedInResponse', getClockedIn());
 	});
 		
     socket.on('SpecificAbilityRequest', function (abilityObject) {
@@ -232,7 +237,7 @@ var Talent = function (ITEM_ID, TALENT_NAME, IMAGE_PATH, DESCRIPTION, FLAVOR, IS
 }
 //PostObject Methods
 function clocktime(userId){
-	
+	var dt = dateTime.create();
 	/*if(userId != ""){
 		var sql = "INSERT INTO ABILITIES (ABILITY_NAME,IMAGE_PATH,SKILL,COST,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
         sql += "VALUES(" + mysql.escape(abilityObject.AbilityName) + "," + mysql.escape(abilityObject.ImagePath) + "," + mysql.escape(abilityObject.Skill) + "," + mysql.escape(abilityObject.Cost) + "," + mysql.escape(abilityObject.Description) + "," + mysql.escape(abilityObject.Flavor) + "," + mysql.escape(abilityObject.IsHomebrew) + "," + mysql.escape(abilityObject.CreatedBy) + ",SYSDATE());";
