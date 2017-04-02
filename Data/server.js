@@ -23,10 +23,16 @@ var connection = mysql.createConnection(
 connection.connect();
 
 base_dir = __dirname.substr(0,__dirname.length-4);
+app.use('/public', express.static('../App/public'));
 app.use(express.static(base_dir));
 	
 //When somebody connects, add these handlers
 io.sockets.on('connection', function (socket) {
+	socket.on('clock time', function(id){
+		console.log(id);
+		socket.emit('clocktimeresponse', "hello!");
+	});
+		
     socket.on('SpecificAbilityRequest', function (abilityObject) {
         if (abilityObject == null || abilityObject.ItemID == undefined) {
             return;
@@ -225,6 +231,38 @@ var Talent = function (ITEM_ID, TALENT_NAME, IMAGE_PATH, DESCRIPTION, FLAVOR, IS
     this.Tags = TAGS;
 }
 //PostObject Methods
+function clocktime(userId){
+	
+	/*if(userId != ""){
+		var sql = "INSERT INTO ABILITIES (ABILITY_NAME,IMAGE_PATH,SKILL,COST,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
+        sql += "VALUES(" + mysql.escape(abilityObject.AbilityName) + "," + mysql.escape(abilityObject.ImagePath) + "," + mysql.escape(abilityObject.Skill) + "," + mysql.escape(abilityObject.Cost) + "," + mysql.escape(abilityObject.Description) + "," + mysql.escape(abilityObject.Flavor) + "," + mysql.escape(abilityObject.IsHomebrew) + "," + mysql.escape(abilityObject.CreatedBy) + ",SYSDATE());";
+        connection.query(sql, function (err, result) {
+            if (err)
+                console.log("postAbility insert ability SQL ERROR: " + err + ":" + sql);
+            else {
+                var itemID = result.insertId;
+                if (abilityObject.Prerequisites != undefined) {
+                    for (var i in abilityObject.Prerequisites) {
+                        var prereq = abilityObject.Prerequites;
+                        connection.query("INSERT INTO PREREQUISITES (ITEM_ID,ITEM_TYPE,DESCRIPTION,IS_HOMEBREW) VALUES(" + itemID + ",'ABILITIES'," + mysql.escape(abilityObject.Prerequisites[i]) + ",true);", function (err, result) {
+                            if (err)
+                                console.log("postAbility insert prereq SQL ERROR: " + err);
+                        });
+                    }
+                }
+                if (abilityObject.Tags != undefined) {
+                    for (var i in abilityObject.Tags) {
+                        connection.query("INSERT INTO ENTITY_TAGS (ENTITY_ID,ENTITY_TYPE,TAG) VALUES(" + itemID + ",'ABILITIES'," + mysql.escape(abilityObject.Tags[i]) + ");", function (err, result) {
+                            if (err)
+                                console.log("postAbility insert TAG SQL ERROR: " + err + ":" + sql);
+                        });
+                    }
+                }
+            }
+        })
+	}*/
+}
+
 function postAbility(abilityObject) {
     if (abilityObject == null) {
         return;
