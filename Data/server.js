@@ -8,6 +8,7 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var fs = require('fs');
 var mysql = require('mysql');
+var dateTime = require('node-datetime');
 var ioPort  = 5000;
 var serverPort  = 4000;
 	
@@ -24,10 +25,24 @@ connection.connect();
 console.log("database connected");
 
 base_dir = __dirname.substr(0,__dirname.length-4);
+app.use('/public', express.static('../App/public'));
 app.use(express.static(base_dir));
 	
 //When somebody connects, add these handlers
 io.sockets.on('connection', function (socket) {
+	socket.on('clockTime', function(id){
+		console.log(id);
+		clocktime(id);
+		socket.emit('clockTimeResponse', id);
+	});
+	socket.on('getClockedIn', function(){
+		var callback = function(resp){
+			console.log("Get Test !!!! " + resp);
+			socket.emit('getClockedInResponse', resp);
+		}
+		getClockedIn(callback);
+	});
+		
     socket.on('login', function (email, password) {
         if(isCustomer){
 			socket.emit('loginResponse','Customer');
@@ -119,6 +134,48 @@ function isManager(email,password){
         })
 }
 //PostObject Methods
+function clocktime(pastId){
+	var userId = mysql.escape(pastId);
+	if(userId != ""){
+		var check = "select * from TimeEntries where EndTime is NULL and UserID = " + userId;
+		console.log(check);
+		connection.query(check, function (err, result) {
+			if(err){
+				console.log("clockTime select time entry" + err + check);
+				
+			} else {
+				console.log(result);
+				if(result[0] != undefined){
+					console.log("Existing entry");
+					check = "update TimeEntries set EndTime=sysdate(), hours=round(timestampdiff(minute, StartTime, EndTime)/60, 1) where UserID = " + userId + " and EndTime is NULL";
+				} else {
+					console.log("New entry");
+					check = "insert into TimeEntries (UserID, StartTime) values (" + userId + ",sysdate())";
+				}
+				connection.query(check, function (err, result) {
+					if(err){
+						console.log("clocktime phase 2" + err + check);
+					}
+				});
+			}
+		});
+	}
+}
+
+function getClockedIn(callback){
+	var sql = "Select e.FirstName, t.StartTime from Employees e, TimeEntries t where e.UserID = t.UserID and t.EndTime is null";
+	connection.query(sql, function (err, result) {
+		if(err){
+			console.log("get clocked in;" + err + sql);
+		} else {
+			console.log("getClockedin result: " + result);
+			if(callback){
+				callback(result);
+			}
+		}
+	});
+}
+
 function postAbility(abilityObject) {
     if (abilityObject == null) {
         return;
