@@ -35,7 +35,11 @@ io.sockets.on('connection', function (socket) {
 		socket.emit('clockTimeResponse', id);
 	});
 	socket.on('getClockedIn', function(){
-		socket.emit('getClockedInResponse', getClockedIn());
+		var callback = function(resp){
+			console.log("Get Test !!!! " + resp);
+			socket.emit('getClockedInResponse', resp);
+		}
+		getClockedIn(callback);
 	});
 		
     socket.on('login', function (email, password) {
@@ -129,36 +133,46 @@ function isManager(email,password){
         })
 }
 //PostObject Methods
-function clocktime(userId){
-	var dt = dateTime.create();
-	/*if(userId != ""){
-		var sql = "INSERT INTO ABILITIES (ABILITY_NAME,IMAGE_PATH,SKILL,COST,DESCRIPTION,FLAVOR,IS_HOMEBREW,CREATED_BY,CREATED_DATE) ";
-        sql += "VALUES(" + mysql.escape(abilityObject.AbilityName) + "," + mysql.escape(abilityObject.ImagePath) + "," + mysql.escape(abilityObject.Skill) + "," + mysql.escape(abilityObject.Cost) + "," + mysql.escape(abilityObject.Description) + "," + mysql.escape(abilityObject.Flavor) + "," + mysql.escape(abilityObject.IsHomebrew) + "," + mysql.escape(abilityObject.CreatedBy) + ",SYSDATE());";
-        connection.query(sql, function (err, result) {
-            if (err)
-                console.log("postAbility insert ability SQL ERROR: " + err + ":" + sql);
-            else {
-                var itemID = result.insertId;
-                if (abilityObject.Prerequisites != undefined) {
-                    for (var i in abilityObject.Prerequisites) {
-                        var prereq = abilityObject.Prerequites;
-                        connection.query("INSERT INTO PREREQUISITES (ITEM_ID,ITEM_TYPE,DESCRIPTION,IS_HOMEBREW) VALUES(" + itemID + ",'ABILITIES'," + mysql.escape(abilityObject.Prerequisites[i]) + ",true);", function (err, result) {
-                            if (err)
-                                console.log("postAbility insert prereq SQL ERROR: " + err);
-                        });
-                    }
-                }
-                if (abilityObject.Tags != undefined) {
-                    for (var i in abilityObject.Tags) {
-                        connection.query("INSERT INTO ENTITY_TAGS (ENTITY_ID,ENTITY_TYPE,TAG) VALUES(" + itemID + ",'ABILITIES'," + mysql.escape(abilityObject.Tags[i]) + ");", function (err, result) {
-                            if (err)
-                                console.log("postAbility insert TAG SQL ERROR: " + err + ":" + sql);
-                        });
-                    }
-                }
-            }
-        })
-	}*/
+function clocktime(pastId){
+	var userId = mysql.escape(pastId);
+	if(userId != ""){
+		var check = "select * from TimeEntries where EndTime is NULL and UserID = " + userId;
+		console.log(check);
+		connection.query(check, function (err, result) {
+			if(err){
+				console.log("clockTime select time entry" + err + check);
+				
+			} else {
+				console.log(result);
+				if(result[0] != undefined){
+					console.log("Existing entry");
+					check = "update TimeEntries set EndTime=sysdate(), hours=round(timestampdiff(minute, StartTime, EndTime)/60, 1) where UserID = " + userId + " and EndTime is NULL";
+				} else {
+					console.log("New entry");
+					check = "insert into TimeEntries (UserID, StartTime) values (" + userId + ",sysdate())";
+				}
+				connection.query(check, function (err, result) {
+					if(err){
+						console.log("clocktime phase 2" + err + check);
+					}
+				});
+			}
+		});
+	}
+}
+
+function getClockedIn(callback){
+	var sql = "Select e.FirstName, t.StartTime from Employees e, TimeEntries t where e.UserID = t.UserID and t.EndTime is null";
+	connection.query(sql, function (err, result) {
+		if(err){
+			console.log("get clocked in;" + err + sql);
+		} else {
+			console.log("getClockedin result: " + result);
+			if(callback){
+				callback(result);
+			}
+		}
+	});
 }
 
 function postAbility(abilityObject) {
