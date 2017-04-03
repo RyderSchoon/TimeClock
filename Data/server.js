@@ -21,6 +21,7 @@ var connection = mysql.createConnection(
 );
 
 connection.connect();
+console.log("database connected");
 
 base_dir = __dirname.substr(0,__dirname.length-4);
 app.use(express.static(base_dir));
