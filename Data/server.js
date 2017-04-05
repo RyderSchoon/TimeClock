@@ -8,7 +8,6 @@ var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var fs = require('fs');
 var mysql = require('mysql');
-var dateTime = require('node-datetime');
 var ioPort  = 5000;
 var serverPort  = 4000;
 	
